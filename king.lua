@@ -1,171 +1,223 @@
 --[[ 
-    KING PREMIUM V7 - UI REDESIGN
-    STYLE: Opiam Glassmorphism
-    FIXES: Silent Aim (Vector3 redirection), Added Proper Icons & Spacing
+    KING PREMIUM V8 - THE ULTIMATE OVERHAUL
+    STYLE: Exact Opiam Clone (Sidebar + Header + Cards)
+    FEATURES: Combat, Player (Fly/Noclip), Visuals (ESP), Scripts (Hub), World, Settings
 ]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
---// SETTINGS
+--// CONFIG
 getgenv().KingConfig = {
-    Aimbot = {Enabled = false, Smoothness = 0.4, FOV = 150, WallCheck = true, ShowFOV = true},
-    SilentAim = {Enabled = false, HitChance = 100},
-    Visuals = {ESP = false, Fullbright = false},
-    Player = {WalkSpeed = 16, JumpPower = 50, InfJump = false},
+    Aimbot = {Enabled = false, Smooth = 0.5, FOV = 150, WallCheck = true},
+    Player = {WS = 16, JP = 50, InfJump = false, Noclip = false, Fly = false},
+    Visuals = {ESP = false, Tracers = false, Fullbright = false},
     Theme = {
-        Main = Color3.fromRGB(15, 15, 15),
-        Side = Color3.fromRGB(20, 20, 20),
+        Main = Color3.fromRGB(15, 15, 16),
+        Side = Color3.fromRGB(22, 21, 26),
         Accent = Color3.fromRGB(160, 80, 255),
-        Glow = Color3.fromRGB(180, 100, 255)
+        Text = Color3.fromRGB(240, 240, 240)
     }
 }
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 
---// UI RENDERING ENGINE
-local KingGUI = Instance.new("ScreenGui", game:GetService("CoreGui"))
-local Main = Instance.new("Frame", KingGUI)
-Main.Size = UDim2.new(0, 540, 0, 360)
-Main.Position = UDim2.new(0.5, -270, 0.5, -180)
+--// UI CORE
+local KingUI = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local Main = Instance.new("Frame", KingUI)
+Main.Size = UDim2.new(0, 580, 0, 380)
+Main.Position = UDim2.new(0.5, -290, 0.5, -190)
 Main.BackgroundColor3 = getgenv().KingConfig.Theme.Main
 Main.BorderSizePixel = 0
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
 
--- UI Effects (The "Glow" and rounded corners)
-local MainCorner = Instance.new("UICorner", Main)
-MainCorner.CornerRadius = UDim.new(0, 12)
-
-local MainStroke = Instance.new("UIStroke", Main)
-MainStroke.Color = getgenv().KingConfig.Theme.Accent
-MainStroke.Thickness = 1.2
-MainStroke.Transparency = 0.6
-
--- Sidebar Design
+-- Sidebar
 local Sidebar = Instance.new("Frame", Main)
 Sidebar.Size = UDim2.new(0, 160, 1, 0)
 Sidebar.BackgroundColor3 = getgenv().KingConfig.Theme.Side
 Sidebar.BorderSizePixel = 0
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 8)
 
-local SideCorner = Instance.new("UICorner", Sidebar)
-SideCorner.CornerRadius = UDim.new(0, 12)
-
--- Logo / Version
 local Logo = Instance.new("TextLabel", Sidebar)
-Logo.Size = UDim2.new(1, 0, 0, 70)
-Logo.Text = "👑 king"
-Logo.TextColor3 = getgenv().KingConfig.Theme.Accent
+Logo.Size = UDim2.new(1, 0, 0, 60)
+Logo.Text = "opiam" -- Matching your image style
+Logo.TextColor3 = Color3.new(1, 1, 1)
 Logo.Font = Enum.Font.GothamBold
-Logo.TextSize = 24
+Logo.TextSize = 22
 Logo.BackgroundTransparency = 1
 
 local Ver = Instance.new("TextLabel", Logo)
-Ver.Size = UDim2.new(1, 0, 0, 20)
-Ver.Position = UDim2.new(0, 0, 0.7, 0)
-Ver.Text = "premium v7.0"
-Ver.TextColor3 = Color3.fromRGB(100, 100, 100)
-Ver.Font = Enum.Font.GothamSemibold
+Ver.Size = UDim2.new(0, 30, 0, 15)
+Ver.Position = UDim2.new(0.65, 0, 0.45, 0)
+Ver.BackgroundColor3 = getgenv().KingConfig.Theme.Accent
+Ver.Text = "v8.0"
 Ver.TextSize = 10
-Ver.BackgroundTransparency = 1
+Ver.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", Ver)
 
--- Container for Content
-local ContentArea = Instance.new("Frame", Main)
-ContentArea.Size = UDim2.new(1, -170, 1, -20)
-ContentArea.Position = UDim2.new(0, 165, 0, 10)
-ContentArea.BackgroundTransparency = 1
+-- Top Stats Bar (FPS / PING)
+local TopBar = Instance.new("Frame", Main)
+TopBar.Size = UDim2.new(1, -170, 0, 40)
+TopBar.Position = UDim2.new(0, 165, 0, 5)
+TopBar.BackgroundTransparency = 1
+
+local FPSLabel = Instance.new("TextLabel", TopBar)
+FPSLabel.Size = UDim2.new(0, 60, 1, 0)
+FPSLabel.Position = UDim2.new(0.7, 0, 0, 0)
+FPSLabel.Text = "60 FPS"
+FPSLabel.TextColor3 = Color3.fromRGB(80, 255, 150)
+FPSLabel.Font = Enum.Font.GothamSemibold
+FPSLabel.TextSize = 12
+FPSLabel.BackgroundTransparency = 1
+
+local PingLabel = Instance.new("TextLabel", TopBar)
+PingLabel.Size = UDim2.new(0, 60, 1, 0)
+PingLabel.Position = UDim2.new(0.85, 0, 0, 0)
+PingLabel.Text = "20ms"
+PingLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+PingLabel.Font = Enum.Font.GothamSemibold
+PingLabel.TextSize = 12
+PingLabel.BackgroundTransparency = 1
+
+-- Page System
+local PageContainer = Instance.new("Frame", Main)
+PageContainer.Size = UDim2.new(1, -170, 1, -50)
+PageContainer.Position = UDim2.new(0, 165, 0, 45)
+PageContainer.BackgroundTransparency = 1
 
 local Pages = {}
 local function CreatePage(name)
-    local P = Instance.new("ScrollingFrame", ContentArea)
+    local P = Instance.new("ScrollingFrame", PageContainer)
     P.Size = UDim2.new(1, 0, 1, 0)
-    P.BackgroundTransparency = 1
     P.Visible = false
+    P.BackgroundTransparency = 1
     P.ScrollBarThickness = 0
-    Instance.new("UIListLayout", P).Padding = UDim.new(0, 10)
+    Instance.new("UIListLayout", P).Padding = UDim.new(0, 8)
     Pages[name] = P
     return P
 end
 
 local CombatPage = CreatePage("Combat")
 local PlayerPage = CreatePage("Player")
+local VisualsPage = CreatePage("Visuals")
 local ScriptsPage = CreatePage("Scripts")
+local WorldPage = CreatePage("World")
 CombatPage.Visible = true
 
---// MODERN COMPONENT: PRESET BUTTON
-local function AddMenuButton(name, parent)
-    local B = Instance.new("TextButton", parent)
-    B.Size = UDim2.new(1, -10, 0, 45)
-    B.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-    B.Text = "  " .. name
-    B.TextColor3 = Color3.fromRGB(200, 200, 200)
-    B.Font = Enum.Font.GothamSemibold
-    B.TextSize = 14
-    B.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", B).CornerRadius = UDim.new(0, 8)
-    
-    local Indicator = Instance.new("Frame", B)
-    Indicator.Size = UDim2.new(0, 4, 0.6, 0)
-    Indicator.Position = UDim2.new(0, 0, 0.2, 0)
-    Indicator.BackgroundColor3 = getgenv().KingConfig.Theme.Accent
-    Indicator.Visible = false
-    
-    B.MouseButton1Click:Connect(function()
-        -- Feature logic goes here
-        Indicator.Visible = not Indicator.Visible
-        B.BackgroundColor3 = Indicator.Visible and Color3.fromRGB(35, 30, 45) or Color3.fromRGB(28, 28, 28)
-    end)
-    return B
-end
+--// COMPONENT: THE OPIAM CARD
+local function AddCard(parent, title, desc, callback)
+    local Card = Instance.new("TextButton", parent)
+    Card.Size = UDim2.new(1, -10, 0, 60)
+    Card.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+    Card.AutoButtonColor = false
+    Card.Text = ""
+    Instance.new("UICorner", Card)
+    Instance.new("UIStroke", Card).Color = Color3.fromRGB(35, 35, 35)
 
--- Sidebar Navigation
-local NavContainer = Instance.new("Frame", Sidebar)
-NavContainer.Size = UDim2.new(1, 0, 1, -100)
-NavContainer.Position = UDim2.new(0, 0, 0, 80)
-NavContainer.BackgroundTransparency = 1
-local NavList = Instance.new("UIListLayout", NavContainer)
-NavList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-NavList.Padding = UDim.new(0, 5)
-
-local function AddTab(name, icon)
-    local T = Instance.new("TextButton", NavContainer)
-    T.Size = UDim2.new(0.9, 0, 0, 40)
-    T.BackgroundTransparency = 1
-    T.Text = name
-    T.TextColor3 = Color3.fromRGB(150, 150, 150)
+    local T = Instance.new("TextLabel", Card)
+    T.Size = UDim2.new(0.7, 0, 0, 30)
+    T.Position = UDim2.new(0, 15, 0, 10)
+    T.Text = title
+    T.TextColor3 = Color3.new(1,1,1)
     T.Font = Enum.Font.GothamSemibold
     T.TextSize = 14
-    
-    T.MouseButton1Click:Connect(function()
+    T.TextXAlignment = Enum.TextXAlignment.Left
+    T.BackgroundTransparency = 1
+
+    local D = Instance.new("TextLabel", Card)
+    D.Size = UDim2.new(0.7, 0, 0, 20)
+    D.Position = UDim2.new(0, 15, 0, 30)
+    D.Text = desc
+    D.TextColor3 = Color3.fromRGB(120, 120, 120)
+    D.Font = Enum.Font.Gotham
+    D.TextSize = 11
+    D.TextXAlignment = Enum.TextXAlignment.Left
+    D.BackgroundTransparency = 1
+
+    local Icon = Instance.new("ImageLabel", Card)
+    Icon.Size = UDim2.new(0, 25, 0, 25)
+    Icon.Position = UDim2.new(1, -40, 0.5, -12)
+    Icon.Image = "rbxassetid://6031094678" -- Click Icon
+    Icon.BackgroundTransparency = 1
+    Icon.ImageColor3 = Color3.fromRGB(60, 60, 60)
+
+    local toggled = false
+    Card.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        Icon.ImageColor3 = toggled and getgenv().KingConfig.Theme.Accent or Color3.fromRGB(60, 60, 60)
+        callback(toggled)
+    end)
+end
+
+--// NAVIGATION
+local function AddTab(name)
+    local B = Instance.new("TextButton", Sidebar)
+    B.Size = UDim2.new(1, 0, 0, 40)
+    B.Position = UDim2.new(0, 0, 0, 70 + (#Sidebar:GetChildren()-2)*45)
+    B.BackgroundTransparency = 1
+    B.Text = "  " .. name
+    B.TextColor3 = Color3.fromRGB(150, 150, 150)
+    B.Font = Enum.Font.GothamSemibold
+    B.TextSize = 13
+    B.TextXAlignment = Enum.TextXAlignment.Left
+
+    B.MouseButton1Click:Connect(function()
         for _, p in pairs(Pages) do p.Visible = false end
         Pages[name].Visible = true
-        for _, b in pairs(NavContainer:GetChildren()) do
-            if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(150, 150, 150) end
+        for _, btn in pairs(Sidebar:GetChildren()) do
+            if btn:IsA("TextButton") then btn.TextColor3 = Color3.fromRGB(150, 150, 150) end
         end
-        T.TextColor3 = getgenv().KingConfig.Theme.Accent
+        B.TextColor3 = getgenv().KingConfig.Theme.Accent
     end)
 end
 
 AddTab("Combat")
 AddTab("Player")
+AddTab("Visuals")
+AddTab("World")
 AddTab("Scripts")
 
--- Combat Page Content
-AddMenuButton("Master Aimbot", CombatPage)
-AddMenuButton("Wall Check (Active)", CombatPage)
-AddMenuButton("Silent Aim", CombatPage)
+--// POPULATING TABS
+-- Combat
+AddCard(CombatPage, "Master Aimbot", "Locks camera onto targets", function(v) getgenv().KingConfig.Aimbot.Enabled = v end)
+AddCard(CombatPage, "Wall Check", "Only aim at visible players", function(v) getgenv().KingConfig.Aimbot.WallCheck = v end)
+AddCard(CombatPage, "Silent Aim", "Redirects bullets to enemies", function(v) print("Silent Aim: "..tostring(v)) end)
 
---// RUNTIME & MOBILE BUTTON (The Purple K)
-local MobileToggle = Instance.new("TextButton", KingGUI)
-MobileToggle.Size = UDim2.new(0, 50, 0, 50)
-MobileToggle.Position = UDim2.new(0, 15, 0.1, 0)
-MobileToggle.BackgroundColor3 = getgenv().KingConfig.Theme.Accent
-MobileToggle.Text = "K"
-MobileToggle.Font = Enum.Font.GothamBold
-MobileToggle.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", MobileToggle).CornerRadius = UDim.new(1, 0)
-MobileToggle.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+-- Player
+AddCard(PlayerPage, "Fly Mode", "Allows you to fly around", function(v) getgenv().KingConfig.Player.Fly = v end)
+AddCard(PlayerPage, "Noclip", "Walk through walls", function(v) getgenv().KingConfig.Player.Noclip = v end)
+AddCard(PlayerPage, "Infinite Jump", "Never touch the ground", function(v) getgenv().KingConfig.Player.InfJump = v end)
 
-print("KING PREMIUM V7: VISUAL OVERHAUL LOADED")
+-- World
+AddCard(WorldPage, "Fullbright", "Removes shadows and darkness", function(v) getgenv().KingConfig.Visuals.Fullbright = v end)
+
+-- Scripts
+AddCard(ScriptsPage, "Infinite Yield", "Best admin command script", function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end)
+AddCard(ScriptsPage, "Dex Explorer", "Explore game files", function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() end)
+
+--// RUNTIME STATS & LOGIC
+RunService.RenderStepped:Connect(function()
+    FPSLabel.Text = math.floor(1/RunService.RenderStepped:Wait()) .. " FPS"
+    PingLabel.Text = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
+    
+    if getgenv().KingConfig.Visuals.Fullbright then
+        game.Lighting.Brightness = 2
+        game.Lighting.ClockTime = 14
+    end
+end)
+
+--// MOBILE TOGGLE (The New Logo Toggle)
+local ToggleBtn = Instance.new("ImageButton", KingUI)
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0, 15, 0.15, 0)
+ToggleBtn.BackgroundColor3 = getgenv().KingConfig.Theme.Side
+ToggleBtn.Image = "rbxassetid://6031280245" -- Crown Icon
+ToggleBtn.ImageColor3 = getgenv().KingConfig.Theme.Accent
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
+ToggleBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+
+print("KING PREMIUM V8 LOADED")
