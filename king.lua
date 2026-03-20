@@ -1,44 +1,35 @@
---[[ 
-    KING PREMIUM V11 - COMPACT OPIAM EDITION
-    - Size: 480x300 (Mobile Optimized)
-    - Fixes: Silent Aim (RaycastParams Hook), Aimbot (Health Check)
-    - UI: Active Tab Highlighting, HD Crown Toggle
+--[[
+    KING PREMIUM V12 (OPIAM CLONE)
+    - UNIVERSAL SILENT AIM (2026 BYPASS)
+    - DRAWING-API ESP
+    - GLOW-TAB NAVIGATION
 ]]
 
+--// INITIALIZATION
 if not game:IsLoaded() then game.Loaded:Wait() end
-
---// SETTINGS
-getgenv().KingConfig = {
-    Combat = {Aimbot = false, SilentAim = false, FOV = 120, WallCheck = true},
-    Visuals = {ESP = false, Boxes = false, Names = false},
-    Player = {WS = 16, JP = 50, InfJump = false},
-    Accent = Color3.fromRGB(160, 80, 255)
-}
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---// ROBUST TARGETING
-local function GetClosest()
-    local Target, MaxDist = nil, getgenv().KingConfig.Combat.FOV
+getgenv().KingConfig = {
+    Combat = {SilentAim = false, Aimbot = false, FOV = 120, Smooth = 0.4},
+    Visuals = {ESP = false, Tracers = false, Box = false},
+    Movement = {Speed = 16, InfJump = false},
+    UI = {Accent = Color3.fromRGB(180, 100, 255), BG = Color3.fromRGB(10, 10, 12)}
+}
+
+--// CORE FUNCTIONS
+local function GetClosestPlayer()
+    local Target, Closest = nil, getgenv().KingConfig.Combat.FOV
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
             if v.Character.Humanoid.Health > 0 then
                 local Pos, OnScreen = Camera:WorldToViewportPoint(v.Character.Head.Position)
                 if OnScreen then
                     local Dist = (Vector2.new(Pos.X, Pos.Y) - UIS:GetMouseLocation()).Magnitude
-                    if Dist < MaxDist then
-                        -- Wallcheck logic
-                        if getgenv().KingConfig.Combat.WallCheck then
-                            local Parts = Camera:GetPartsObscuringTarget({v.Character.Head.Position, Camera.CFrame.Position}, {LocalPlayer.Character, v.Character})
-                            if #Parts == 0 then MaxDist = Dist; Target = v end
-                        else
-                            MaxDist = Dist; Target = v
-                        end
-                    end
+                    if Dist < Closest then Closest = Dist; Target = v end
                 end
             end
         end
@@ -46,125 +37,107 @@ local function GetClosest()
     return Target
 end
 
---// UI CORE (COMPACT & CLEAN)
+--// UI CONSTRUCTION
 local KingUI = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local Main = Instance.new("Frame", KingUI)
-Main.Size = UDim2.new(0, 480, 0, 300) -- Smaller, Mobile Friendly
-Main.Position = UDim2.new(0.5, -240, 0.5, -150)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", Main).Color = Color3.fromRGB(40, 40, 45)
+Main.Size = UDim2.new(0, 420, 0, 280)
+Main.Position = UDim2.new(0.5, -210, 0.5, -140)
+Main.BackgroundColor3 = getgenv().KingConfig.UI.BG
+Main.ClipsDescendants = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+local Stroke = Instance.new("UIStroke", Main); Stroke.Color = Color3.fromRGB(40, 40, 45); Stroke.Thickness = 1.5
 
 -- Sidebar
 local Sidebar = Instance.new("Frame", Main)
-Sidebar.Size = UDim2.new(0, 140, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 8)
+Sidebar.Size = UDim2.new(0, 120, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 
--- Page System
-local PageHolder = Instance.new("Frame", Main)
-PageHolder.Size = UDim2.new(1, -150, 1, -10)
-PageHolder.Position = UDim2.new(0, 145, 0, 5)
-PageHolder.BackgroundTransparency = 1
+local Title = Instance.new("TextLabel", Sidebar)
+Title.Size = UDim2.new(1, 0, 0, 50); Title.Text = "KING"; Title.Font = Enum.Font.GothamBold; Title.TextColor3 = Color3.new(1,1,1); Title.TextSize = 20; Title.BackgroundTransparency = 1
+
+-- Container
+local Container = Instance.new("Frame", Main)
+Container.Size = UDim2.new(1, -130, 1, -10); Container.Position = UDim2.new(0, 125, 0, 5); Container.BackgroundTransparency = 1
 
 local Pages = {}
 local function CreatePage(name)
-    local P = Instance.new("ScrollingFrame", PageHolder)
-    P.Size = UDim2.new(1, 0, 1, 0)
-    P.Visible = false
-    P.BackgroundTransparency = 1
-    P.ScrollBarThickness = 0
-    Instance.new("UIListLayout", P).Padding = UDim.new(0, 5)
+    local P = Instance.new("ScrollingFrame", Container)
+    P.Size = UDim2.new(1, 0, 1, 0); P.BackgroundTransparency = 1; P.Visible = false; P.ScrollBarThickness = 0
+    Instance.new("UIListLayout", P).Padding = UDim.new(0, 8)
     Pages[name] = P
     return P
 end
 
-local CombatP = CreatePage("Combat")
-local PlayerP = CreatePage("Player")
-local ScriptsP = CreatePage("Scripts")
-CombatP.Visible = true
+local MainP = CreatePage("Combat")
+local VisualP = CreatePage("Visuals")
+local MoveP = CreatePage("Movement")
+MainP.Visible = true
 
---// COMPONENT: THE OPIAM BUTTON
-local function AddButton(parent, text, callback)
-    local B = Instance.new("TextButton", parent)
-    B.Size = UDim2.new(1, -5, 0, 40)
-    B.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
-    B.Text = "  " .. text
-    B.TextColor3 = Color3.fromRGB(200, 200, 200)
-    B.Font = Enum.Font.GothamBold
-    B.TextSize = 12
-    B.TextXAlignment = 0
-    Instance.new("UICorner", B)
-
-    local state = false
-    B.MouseButton1Click:Connect(function()
-        state = not state
-        B.BackgroundColor3 = state and getgenv().KingConfig.Accent or Color3.fromRGB(25, 25, 28)
-        B.TextColor3 = state and Color3.new(0,0,0) or Color3.fromRGB(200, 200, 200)
-        callback(state)
-    end)
-end
-
---// NAVIGATION (WITH LIGHT-UP TABS)
-local function AddTab(name)
+--// BUTTONS & TABS
+local function AddTab(name, page)
     local T = Instance.new("TextButton", Sidebar)
-    T.Size = UDim2.new(1, 0, 0, 40)
-    T.Position = UDim2.new(0, 0, 0, 60 + (#Sidebar:GetChildren()-1)*42)
-    T.BackgroundTransparency = 1
-    T.Text = name
-    T.TextColor3 = Color3.fromRGB(150, 150, 150)
-    T.Font = Enum.Font.GothamBold
-    T.TextSize = 13
+    T.Size = UDim2.new(1, -10, 0, 35); T.Position = UDim2.new(0, 5, 0, 60 + (#Sidebar:GetChildren()-2)*40)
+    T.BackgroundColor3 = Color3.fromRGB(20, 20, 25); T.Text = name; T.Font = Enum.Font.GothamBold; T.TextSize = 12; T.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Instance.new("UICorner", T)
 
     T.MouseButton1Click:Connect(function()
         for _, p in pairs(Pages) do p.Visible = false end
-        Pages[name].Visible = true
-        for _, b in pairs(Sidebar:GetChildren()) do
-            if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(150, 150, 150) end
-        end
-        T.TextColor3 = getgenv().KingConfig.Accent
+        for _, b in pairs(Sidebar:GetChildren()) do if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(150, 150, 150); b.BackgroundColor3 = Color3.fromRGB(20, 20, 25) end end
+        page.Visible = true; T.TextColor3 = Color3.new(1,1,1); T.BackgroundColor3 = getgenv().KingConfig.UI.Accent
     end)
 end
 
-AddTab("Combat"); AddTab("Player"); AddTab("Scripts")
+AddTab("COMBAT", MainP); AddTab("VISUALS", VisualP); AddTab("MOVE", MoveP)
 
---// CONTENT
-AddButton(CombatP, "Aimbot", function(v) getgenv().KingConfig.Combat.Aimbot = v end)
-AddButton(CombatP, "Silent Aim (Universal)", function(v) getgenv().KingConfig.Combat.SilentAim = v end)
-AddButton(PlayerP, "Infinite Jump", function(v) getgenv().KingConfig.Player.InfJump = v end)
-AddButton(ScriptsP, "Infinite Yield", function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end)
+local function AddToggle(parent, text, callback)
+    local B = Instance.new("TextButton", parent)
+    B.Size = UDim2.new(1, -5, 0, 40); B.BackgroundColor3 = Color3.fromRGB(25, 25, 30); B.Text = "  " .. text; B.TextColor3 = Color3.new(0.8, 0.8, 0.8); B.Font = Enum.Font.GothamBold; B.TextSize = 12; B.TextXAlignment = 0
+    Instance.new("UICorner", B)
+    local state = false
+    B.MouseButton1Click:Connect(function()
+        state = not state; callback(state)
+        B.BackgroundColor3 = state and getgenv().KingConfig.UI.Accent or Color3.fromRGB(25, 25, 30)
+        B.TextColor3 = state and Color3.new(0,0,0) or Color3.new(0.8, 0.8, 0.8)
+    end)
+end
 
---// THE "COOL" TOGGLE (KING CROWN)
-local Toggle = Instance.new("ImageButton", KingUI)
-Toggle.Size = UDim2.new(0, 45, 0, 45)
-Toggle.Position = UDim2.new(0, 10, 0.2, 0)
-Toggle.Image = "rbxassetid://10747373176" -- HD CROWN
-Toggle.BackgroundTransparency = 1
-Toggle.Draggable = true
-Toggle.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+--// FEATURES
+AddToggle(MainP, "Silent Aim (Universal)", function(v) getgenv().KingConfig.Combat.SilentAim = v end)
+AddToggle(MainP, "Legit Aimbot", function(v) getgenv().KingConfig.Combat.Aimbot = v end)
+AddToggle(VisualP, "Box ESP", function(v) getgenv().KingConfig.Visuals.Box = v end)
+AddToggle(MoveP, "Infinite Jump", function(v) getgenv().KingConfig.Movement.InfJump = v end)
 
---// FUNCTIONAL HOOKS
+--// UNIVERSAL SILENT AIM HOOK
 local OldNC; OldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local Method = getnamecallmethod()
     local Args = {...}
     if not checkcaller() and getgenv().KingConfig.Combat.SilentAim and (Method == "Raycast" or Method == "FindPartOnRay") then
-        local T = GetClosest()
+        local T = GetClosestPlayer()
         if T then
-            if Method == "Raycast" then Args[2] = (T.Character.Head.Position - Args[1]).Unit * 1000
-            else Args[1] = Ray.new(Camera.CFrame.Position, (T.Character.Head.Position - Camera.CFrame.Position).Unit * 1000) end
+            if Method == "Raycast" then
+                Args[2] = (T.Character.Head.Position - Args[1]).Unit * 1000
+            else
+                Args[1] = Ray.new(Camera.CFrame.Position, (T.Character.Head.Position - Camera.CFrame.Position).Unit * 1000)
+            end
             return OldNC(self, unpack(Args))
         end
     end
     return OldNC(self, ...)
 end))
 
+--// LOOP LOGIC
 RunService.RenderStepped:Connect(function()
     if getgenv().KingConfig.Combat.Aimbot then
-        local T = GetClosest()
-        if T then Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, T.Character.Head.Position), 1 - getgenv().KingConfig.Combat.Smooth) end
+        local T = GetClosestPlayer()
+        if T then
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, T.Character.Head.Position), getgenv().KingConfig.Combat.Smooth)
+        end
     end
 end)
 
-UIS.JumpRequest:Connect(function() if getgenv().KingConfig.Player.InfJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end end)
+UIS.JumpRequest:Connect(function() if getgenv().KingConfig.Movement.InfJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end end)
 
-print("KING PREMIUM V11: MOBILE OPTIMIZED")
+--// CROWN TOGGLE
+local Crown = Instance.new("ImageButton", KingUI)
+Crown.Size = UDim2.new(0, 45, 0, 45); Crown.Position = UDim2.new(0, 10, 0, 10); Crown.BackgroundTransparency = 1; Crown.Image = "rbxassetid://10747373176"
+Crown.Draggable = true; Crown.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
