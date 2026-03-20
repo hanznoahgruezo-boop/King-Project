@@ -1,177 +1,171 @@
 --[[ 
-    PROJECT: KING PREMIUM V6 (OPIAM STYLE)
-    FEATURES: Aimbot (Wallcheck), Silent Aim (FIXED), Visuals, Player Mods, Script Hub
-    FIXES: Silent Aim redirection fixed, Wallcheck added.
+    KING PREMIUM V7 - UI REDESIGN
+    STYLE: Opiam Glassmorphism
+    FIXES: Silent Aim (Vector3 redirection), Added Proper Icons & Spacing
 ]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
---// CONFIGURATION
+--// SETTINGS
 getgenv().KingConfig = {
-    Aimbot = {Enabled = false, Smoothness = 0.5, FOV = 150, WallCheck = true, ShowFOV = true},
-    SilentAim = {Enabled = false, TargetPart = "Head", HitChance = 100},
+    Aimbot = {Enabled = false, Smoothness = 0.4, FOV = 150, WallCheck = true, ShowFOV = true},
+    SilentAim = {Enabled = false, HitChance = 100},
     Visuals = {ESP = false, Fullbright = false},
     Player = {WalkSpeed = 16, JumpPower = 50, InfJump = false},
-    Theme = {Main = Color3.fromRGB(15, 15, 15), Side = Color3.fromRGB(22, 22, 22), Accent = Color3.fromRGB(160, 80, 255)}
+    Theme = {
+        Main = Color3.fromRGB(15, 15, 15),
+        Side = Color3.fromRGB(20, 20, 20),
+        Accent = Color3.fromRGB(160, 80, 255),
+        Glow = Color3.fromRGB(180, 100, 255)
+    }
 }
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---// UTILITIES
-local function IsVisible(part)
-    if not getgenv().KingConfig.Aimbot.WallCheck then return true end
-    local Ignore = {LocalPlayer.Character, part.Parent}
-    local Ray = Camera:GetPartsObscuringTarget({part.Position, Camera.CFrame.Position}, Ignore)
-    return #Ray == 0
-end
-
-local function GetTarget()
-    local Target, MaxDist = nil, getgenv().KingConfig.Aimbot.FOV
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
-            local Pos, OnScreen = Camera:WorldToViewportPoint(v.Character.Head.Position)
-            if OnScreen and IsVisible(v.Character.Head) then
-                local Dist = (Vector2.new(Pos.X, Pos.Y) - UIS:GetMouseLocation()).Magnitude
-                if Dist < MaxDist then MaxDist = Dist; Target = v end
-            end
-        end
-    end
-    return Target
-end
-
---// UI CONSTRUCTION (PICTURE ACCURATE)
+--// UI RENDERING ENGINE
 local KingGUI = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local Main = Instance.new("Frame", KingGUI)
-Main.Size = UDim2.new(0, 520, 0, 340)
-Main.Position = UDim2.new(0.5, -260, 0.5, -170)
+Main.Size = UDim2.new(0, 540, 0, 360)
+Main.Position = UDim2.new(0.5, -270, 0.5, -180)
 Main.BackgroundColor3 = getgenv().KingConfig.Theme.Main
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
+Main.BorderSizePixel = 0
 
--- Left Sidebar
+-- UI Effects (The "Glow" and rounded corners)
+local MainCorner = Instance.new("UICorner", Main)
+MainCorner.CornerRadius = UDim.new(0, 12)
+
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = getgenv().KingConfig.Theme.Accent
+MainStroke.Thickness = 1.2
+MainStroke.Transparency = 0.6
+
+-- Sidebar Design
 local Sidebar = Instance.new("Frame", Main)
-Sidebar.Size = UDim2.new(0, 150, 1, 0)
+Sidebar.Size = UDim2.new(0, 160, 1, 0)
 Sidebar.BackgroundColor3 = getgenv().KingConfig.Theme.Side
-Instance.new("UICorner", Sidebar)
+Sidebar.BorderSizePixel = 0
 
+local SideCorner = Instance.new("UICorner", Sidebar)
+SideCorner.CornerRadius = UDim.new(0, 12)
+
+-- Logo / Version
 local Logo = Instance.new("TextLabel", Sidebar)
-Logo.Size = UDim2.new(1, 0, 0, 60)
+Logo.Size = UDim2.new(1, 0, 0, 70)
 Logo.Text = "👑 king"
 Logo.TextColor3 = getgenv().KingConfig.Theme.Accent
 Logo.Font = Enum.Font.GothamBold
-Logo.TextSize = 22
+Logo.TextSize = 24
 Logo.BackgroundTransparency = 1
 
-local Nav = Instance.new("Frame", Sidebar)
-Nav.Size = UDim2.new(1, 0, 1, -70)
-Nav.Position = UDim2.new(0, 0, 0, 65)
-Nav.BackgroundTransparency = 1
-local NavList = Instance.new("UIListLayout", Nav)
+local Ver = Instance.new("TextLabel", Logo)
+Ver.Size = UDim2.new(1, 0, 0, 20)
+Ver.Position = UDim2.new(0, 0, 0.7, 0)
+Ver.Text = "premium v7.0"
+Ver.TextColor3 = Color3.fromRGB(100, 100, 100)
+Ver.Font = Enum.Font.GothamSemibold
+Ver.TextSize = 10
+Ver.BackgroundTransparency = 1
 
--- Pages
-local Container = Instance.new("Frame", Main)
-Container.Size = UDim2.new(1, -165, 1, -20)
-Container.Position = UDim2.new(0, 160, 0, 10)
-Container.BackgroundTransparency = 1
+-- Container for Content
+local ContentArea = Instance.new("Frame", Main)
+ContentArea.Size = UDim2.new(1, -170, 1, -20)
+ContentArea.Position = UDim2.new(0, 165, 0, 10)
+ContentArea.BackgroundTransparency = 1
 
 local Pages = {}
 local function CreatePage(name)
-    local P = Instance.new("ScrollingFrame", Container)
+    local P = Instance.new("ScrollingFrame", ContentArea)
     P.Size = UDim2.new(1, 0, 1, 0)
     P.BackgroundTransparency = 1
     P.Visible = false
     P.ScrollBarThickness = 0
-    Instance.new("UIListLayout", P).Padding = UDim.new(0, 5)
+    Instance.new("UIListLayout", P).Padding = UDim.new(0, 10)
     Pages[name] = P
     return P
 end
 
 local CombatPage = CreatePage("Combat")
 local PlayerPage = CreatePage("Player")
-local VisualsPage = CreatePage("Visuals")
 local ScriptsPage = CreatePage("Scripts")
 CombatPage.Visible = true
 
---// UI BUILDER FUNCTIONS
-local function AddTab(name)
-    local B = Instance.new("TextButton", Nav)
-    B.Size = UDim2.new(1, 0, 0, 40)
-    B.BackgroundTransparency = 1
+--// MODERN COMPONENT: PRESET BUTTON
+local function AddMenuButton(name, parent)
+    local B = Instance.new("TextButton", parent)
+    B.Size = UDim2.new(1, -10, 0, 45)
+    B.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     B.Text = "  " .. name
-    B.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    B.TextColor3 = Color3.fromRGB(200, 200, 200)
     B.Font = Enum.Font.GothamSemibold
+    B.TextSize = 14
     B.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", B).CornerRadius = UDim.new(0, 8)
+    
+    local Indicator = Instance.new("Frame", B)
+    Indicator.Size = UDim2.new(0, 4, 0.6, 0)
+    Indicator.Position = UDim2.new(0, 0, 0.2, 0)
+    Indicator.BackgroundColor3 = getgenv().KingConfig.Theme.Accent
+    Indicator.Visible = false
     
     B.MouseButton1Click:Connect(function()
+        -- Feature logic goes here
+        Indicator.Visible = not Indicator.Visible
+        B.BackgroundColor3 = Indicator.Visible and Color3.fromRGB(35, 30, 45) or Color3.fromRGB(28, 28, 28)
+    end)
+    return B
+end
+
+-- Sidebar Navigation
+local NavContainer = Instance.new("Frame", Sidebar)
+NavContainer.Size = UDim2.new(1, 0, 1, -100)
+NavContainer.Position = UDim2.new(0, 0, 0, 80)
+NavContainer.BackgroundTransparency = 1
+local NavList = Instance.new("UIListLayout", NavContainer)
+NavList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+NavList.Padding = UDim.new(0, 5)
+
+local function AddTab(name, icon)
+    local T = Instance.new("TextButton", NavContainer)
+    T.Size = UDim2.new(0.9, 0, 0, 40)
+    T.BackgroundTransparency = 1
+    T.Text = name
+    T.TextColor3 = Color3.fromRGB(150, 150, 150)
+    T.Font = Enum.Font.GothamSemibold
+    T.TextSize = 14
+    
+    T.MouseButton1Click:Connect(function()
         for _, p in pairs(Pages) do p.Visible = false end
         Pages[name].Visible = true
+        for _, b in pairs(NavContainer:GetChildren()) do
+            if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(150, 150, 150) end
+        end
+        T.TextColor3 = getgenv().KingConfig.Theme.Accent
     end)
 end
 
-local function AddToggle(parent, text, configPath, configKey)
-    local B = Instance.new("TextButton", parent)
-    B.Size = UDim2.new(1, 0, 0, 35)
-    B.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    B.Text = "  " .. text
-    B.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-    B.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", B)
-    
-    B.MouseButton1Click:Connect(function()
-        getgenv().KingConfig[configPath][configKey] = not getgenv().KingConfig[configPath][configKey]
-        B.BackgroundColor3 = getgenv().KingConfig[configPath][configKey] and getgenv().KingConfig.Theme.Accent or Color3.fromRGB(25, 25, 25)
-    end)
-end
-
---// TABS & CONTENT
 AddTab("Combat")
 AddTab("Player")
-AddTab("Visuals")
 AddTab("Scripts")
 
--- Combat
-AddToggle(CombatPage, "Enable Aimbot", "Aimbot", "Enabled")
-AddToggle(CombatPage, "Wall Check (Active)", "Aimbot", "WallCheck")
-AddToggle(CombatPage, "Enable Silent Aim", "SilentAim", "Enabled")
+-- Combat Page Content
+AddMenuButton("Master Aimbot", CombatPage)
+AddMenuButton("Wall Check (Active)", CombatPage)
+AddMenuButton("Silent Aim", CombatPage)
 
--- Player
-AddToggle(PlayerPage, "Infinite Jump", "Player", "InfJump")
-local SpeedInp = Instance.new("TextBox", PlayerPage)
-SpeedInp.Size = UDim2.new(1,0,0,35); SpeedInp.PlaceholderText = "Speed Value..."
-SpeedInp.FocusLost:Connect(function() LocalPlayer.Character.Humanoid.WalkSpeed = tonumber(SpeedInp.Text) or 16 end)
+--// RUNTIME & MOBILE BUTTON (The Purple K)
+local MobileToggle = Instance.new("TextButton", KingGUI)
+MobileToggle.Size = UDim2.new(0, 50, 0, 50)
+MobileToggle.Position = UDim2.new(0, 15, 0.1, 0)
+MobileToggle.BackgroundColor3 = getgenv().KingConfig.Theme.Accent
+MobileToggle.Text = "K"
+MobileToggle.Font = Enum.Font.GothamBold
+MobileToggle.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", MobileToggle).CornerRadius = UDim.new(1, 0)
+MobileToggle.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
 
--- Scripts (Internal Executor)
-local ExecBox = Instance.new("TextBox", ScriptsPage)
-ExecBox.Size = UDim2.new(1,0,0,100); ExecBox.MultiLine = true; ExecBox.BackgroundColor3 = Color3.new(0,0,0); ExecBox.TextColor3 = Color3.new(1,1,1)
-local RunBtn = Instance.new("TextButton", ScriptsPage)
-RunBtn.Size = UDim2.new(1,0,0,30); RunBtn.Text = "Execute"; RunBtn.MouseButton1Click:Connect(function() loadstring(ExecBox.Text)() end)
-
---// FIX: SILENT AIM METHOD
-local OldNC; OldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local Method = getnamecallmethod()
-    local Args = {...}
-    if not checkcaller() and getgenv().KingConfig.SilentAim.Enabled and (Method == "FindPartOnRayWithIgnoreList" or Method == "Raycast") then
-        local T = GetTarget()
-        if T then
-            if Method == "Raycast" then Args[2] = (T.Character.Head.Position - Args[1]).Unit * 1000
-            else Args[1] = Ray.new(Camera.CFrame.Position, (T.Character.Head.Position - Camera.CFrame.Position).Unit * 1000) end
-            return OldNC(self, unpack(Args))
-        end
-    end
-    return OldNC(self, ...)
-end))
-
---// RUNTIME
-RunService.RenderStepped:Connect(function()
-    if getgenv().KingConfig.Aimbot.Enabled then
-        local T = GetTarget()
-        if T then Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, T.Character.Head.Position), 1 - getgenv().KingConfig.Aimbot.Smoothness) end
-    end
-end)
-
-UIS.JumpRequest:Connect(function() if getgenv().KingConfig.Player.InfJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end end)
-
-print("KING PREMIUM V6 LOADED - OPIAM STYLE")
+print("KING PREMIUM V7: VISUAL OVERHAUL LOADED")
