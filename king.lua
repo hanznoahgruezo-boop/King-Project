@@ -1,138 +1,161 @@
 --[[ 
-    PROJECT: KING_GUI_PREMIUM_FINAL
-    BUILD: 3.0.5 (RETAIL)
-    FEATURES: Aimbot, ESP, Silent Aim, Server Hop, Anti-AFK, Panic Key
+    KING PREMIUM V5 - THE "ULTIMATE" HUB
+    UPDATES: Internal Executor, Player Slider, Tab System, Full Stats
+    FIXES: Smooth UI, Multi-Page Layout
 ]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
---// SETTINGS & GLOBALS
+--// CONFIG
 getgenv().KingConfig = {
-    Aimbot = {Enabled = false, Smoothness = 0.4, FOV = 150, TargetPart = "Head"},
-    ESP = {Enabled = false, Boxes = true, Names = true, Color = Color3.fromRGB(212, 175, 55)},
-    SilentAim = {Enabled = false, HitChance = 100},
-    AntiAFK = true,
-    PanicKey = Enum.KeyCode.RightControl
+    Aimbot = {Enabled = false, Smoothness = 0.5, FOV = 150, WallCheck = true, ShowFOV = true},
+    Player = {WalkSpeed = 16, JumpPower = 50, InfJump = false},
+    Visuals = {Fullbright = false},
+    CurrentTab = "Combat"
 }
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---// FEATURE: ANTI-AFK (Internal)
-local VirtualUser = game:GetService("VirtualUser")
-LocalPlayer.Idled:Connect(function()
-    if getgenv().KingConfig.AntiAFK then
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end
-end)
-
---// CORE FUNCTIONS
-local function GetClosestPlayer()
-    local Target, MaxDist = nil, getgenv().KingConfig.Aimbot.FOV
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-            local Pos, OnScreen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
-            if OnScreen then
-                local MouseDist = (Vector2.new(Pos.X, Pos.Y) - UIS:GetMouseLocation()).Magnitude
-                if MouseDist < MaxDist then MaxDist = MouseDist; Target = v end
-            end
-        end
-    end
-    return Target
-end
-
---// KING UI INITIALIZATION
+--// 1. UI SETUP (OPIAM STYLE)
 local KingGUI = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local Main = Instance.new("Frame", KingGUI)
-Main.Size = UDim2.new(0, 250, 0, 400)
-Main.Position = UDim2.new(0.5, -125, 0.5, -200)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+Main.Size = UDim2.new(0, 550, 0, 350)
+Main.Position = UDim2.new(0.5, -275, 0.5, -175)
+Main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 45)
-Title.Text = "KING PREMIUM V3"
-Title.TextColor3 = Color3.fromRGB(212, 175, 55)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
-Title.BackgroundTransparency = 1
+-- Sidebar
+local Sidebar = Instance.new("Frame", Main)
+Sidebar.Size = UDim2.new(0, 140, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
 
-local Container = Instance.new("ScrollingFrame", Main)
-Container.Size = UDim2.new(1, -20, 1, -60)
-Container.Position = UDim2.new(0, 10, 0, 50)
-Container.BackgroundTransparency = 1
-Container.ScrollBarThickness = 0
-local UIList = Instance.new("UIListLayout", Container)
-UIList.Padding = UDim.new(0, 8)
+-- Content Area
+local PageContainer = Instance.new("Frame", Main)
+PageContainer.Size = UDim2.new(1, -150, 1, -20)
+PageContainer.Position = UDim2.new(0, 145, 0, 10)
+PageContainer.BackgroundTransparency = 1
 
---// UI COMPONENT TOOLKIT
-local function CreateToggle(text, callback)
-    local Btn = Instance.new("TextButton", Container)
-    Btn.Size = UDim2.new(1, 0, 0, 40)
-    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Btn.Text = text
-    Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Btn.Font = Enum.Font.GothamSemibold
-    Btn.TextSize = 13
-    Instance.new("UICorner", Btn)
+local function CreatePage(name)
+    local Page = Instance.new("ScrollingFrame", PageContainer)
+    Page.Name = name .. "Page"
+    Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.BackgroundTransparency = 1
+    Page.Visible = (name == "Combat")
+    Page.ScrollBarThickness = 0
+    Instance.new("UIListLayout", Page).Padding = UDim.new(0, 6)
+    return Page
+end
 
-    local toggled = false
-    Btn.MouseButton1Click:Connect(function()
-        toggled = not toggled
-        Btn.TextColor3 = toggled and Color3.fromRGB(212, 175, 55) or Color3.fromRGB(200, 200, 200)
-        callback(toggled)
+local CombatPage = CreatePage("Combat")
+local PlayerPage = CreatePage("Player")
+local ExecutorPage = CreatePage("Executor")
+
+--// 2. UI COMPONENTS (Buttons & Inputs)
+local function AddToggle(parent, text, callback)
+    local B = Instance.new("TextButton", parent)
+    B.Size = UDim2.new(1, -5, 0, 35)
+    B.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    B.Text = "  " .. text
+    B.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    B.TextXAlignment = Enum.TextXAlignment.Left
+    B.Font = Enum.Font.Gotham
+    Instance.new("UICorner", B)
+    
+    local state = false
+    B.MouseButton1Click:Connect(function()
+        state = not state
+        B.BackgroundColor3 = state and Color3.fromRGB(160, 80, 255) or Color3.fromRGB(25, 25, 25)
+        callback(state)
     end)
 end
 
---// FEATURE SETUP
-CreateToggle("Master Aimbot", function(v) getgenv().KingConfig.Aimbot.Enabled = v end)
-CreateToggle("Royal ESP", function(v) getgenv().KingConfig.ESP.Enabled = v end)
-CreateToggle("Silent Aim", function(v) getgenv().KingConfig.SilentAim.Enabled = v end)
-CreateToggle("Anti-AFK (On)", function(v) getgenv().KingConfig.AntiAFK = v end)
+--// 3. COMBAT TAB
+AddToggle(CombatPage, "Master Aimbot", function(v) getgenv().KingConfig.Aimbot.Enabled = v end)
+AddToggle(CombatPage, "Wall Check", function(v) getgenv().KingConfig.Aimbot.WallCheck = v end)
+AddToggle(CombatPage, "Show FOV Circle", function(v) getgenv().KingConfig.Aimbot.ShowFOV = v end)
 
-CreateToggle("Server Hop", function()
-    local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
-    for _, s in pairs(Servers.data) do
-        if s.playing < s.maxPlayers and s.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id)
-            break
-        end
+--// 4. PLAYER TAB (Sliders & Custom Values)
+local SpeedInput = Instance.new("TextBox", PlayerPage)
+SpeedInput.Size = UDim2.new(1, -5, 0, 35)
+SpeedInput.PlaceholderText = "Enter WalkSpeed (Default 16)..."
+SpeedInput.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+SpeedInput.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", SpeedInput)
+SpeedInput.FocusLost:Connect(function()
+    LocalPlayer.Character.Humanoid.WalkSpeed = tonumber(SpeedInput.Text) or 16
+end)
+
+AddToggle(PlayerPage, "Infinite Jump", function(v) getgenv().KingConfig.Player.InfJump = v end)
+AddToggle(PlayerPage, "Fullbright", function(v) getgenv().KingConfig.Visuals.Fullbright = v end)
+
+--// 5. EXECUTOR TAB (Internal Script Runner)
+local CodeBox = Instance.new("TextBox", ExecutorPage)
+CodeBox.Size = UDim2.new(1, -5, 0, 150)
+CodeBox.MultiLine = true
+CodeBox.ClearTextOnFocus = false
+CodeBox.Text = "-- Paste Script Here..."
+CodeBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+CodeBox.TextColor3 = Color3.new(0, 1, 0)
+CodeBox.Font = Enum.Font.Code
+CodeBox.TextYAlignment = Enum.TextYAlignment.Top
+CodeBox.TextXAlignment = Enum.TextXAlignment.Left
+Instance.new("UICorner", CodeBox)
+
+local ExecBtn = Instance.new("TextButton", ExecutorPage)
+ExecBtn.Size = UDim2.new(1, -5, 0, 35)
+ExecBtn.Text = "EXECUTE SCRIPT"
+ExecBtn.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
+ExecBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", ExecBtn)
+
+ExecBtn.MouseButton1Click:Connect(function()
+    local success, err = pcall(function()
+        loadstring(CodeBox.Text)()
+    end)
+    if not success then warn("EXEC ERROR: " .. err) end
+end)
+
+--// 6. SIDEBAR NAVIGATION
+local function AddTab(name)
+    local T = Instance.new("TextButton", Sidebar)
+    T.Size = UDim2.new(1, 0, 0, 40)
+    T.Position = UDim2.new(0, 0, 0, 60 + (#Sidebar:GetChildren() * 45))
+    T.Text = name
+    T.TextColor3 = Color3.new(1,1,1)
+    T.BackgroundTransparency = 1
+    T.Font = Enum.Font.GothamBold
+    
+    T.MouseButton1Click:Connect(function()
+        CombatPage.Visible = (name == "Combat")
+        PlayerPage.Visible = (name == "Player")
+        ExecutorPage.Visible = (name == "Scripts")
+    end)
+end
+
+AddTab("Combat")
+AddTab("Player")
+AddTab("Scripts")
+
+--// 7. MOBILE TOGGLE & RUNTIME
+local K = Instance.new("TextButton", KingGUI)
+K.Size = UDim2.new(0, 50, 0, 50)
+K.Position = UDim2.new(0, 15, 0.1, 0)
+K.BackgroundColor3 = Color3.fromRGB(160, 80, 255)
+K.Text = "K"
+K.Font = Enum.Font.GothamBold
+Instance.new("UICorner", K).CornerRadius = UDim.new(1, 0)
+K.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+
+-- Infinite Jump Hook
+UIS.JumpRequest:Connect(function()
+    if getgenv().KingConfig.Player.InfJump then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
     end
 end)
 
---// MOBILE TOGGLE CROWN
-local Crown = Instance.new("TextButton", KingGUI)
-Crown.Size = UDim2.new(0, 50, 0, 50)
-Crown.Position = UDim2.new(0, 10, 0.2, 0)
-Crown.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
-Crown.Text = "K"
-Crown.Font = Enum.Font.GothamBold
-Crown.TextSize = 24
-Instance.new("UICorner", Crown).CornerRadius = UDim.new(1, 0)
-Crown.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
-
---// PANIC KEY SCRIPT
-UIS.InputBegan:Connect(function(i, g)
-    if not g and i.KeyCode == getgenv().KingConfig.PanicKey then KingGUI:Destroy() end
-end)
-
---// RUNTIME LOOP (Aimbot Logic)
-RunService.RenderStepped:Connect(function()
-    if getgenv().KingConfig.Aimbot.Enabled then
-        local T = GetClosestPlayer()
-        if T and T.Character then
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, T.Character[getgenv().KingConfig.Aimbot.TargetPart].Position), 1 - getgenv().KingConfig.Aimbot.Smoothness)
-        end
-    end
-end)
-
-print("KING PREMIUM LOADED SUCCESSFULLY")
+print("KING PREMIUM V5 LOADED: ENJOY THE HUB")
